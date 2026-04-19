@@ -25,9 +25,10 @@ public class FeedController {
 	@GetMapping
 	public FeedResponseDto getFeed(@RequestParam(defaultValue = "20") Integer limit,
 			@RequestParam(required = false) Instant cursorPostTime,
-			@RequestParam(required = false) Long cursorPostId) {
+			@RequestParam(required = false) Long cursorPostId,
+			@RequestParam(required = false) Long viewerUserId) {
 		try {
-			return postService.getFeed(limit, cursorPostTime, cursorPostId);
+			return postService.getFeed(limit, cursorPostTime, cursorPostId, viewerUserId);
 		} catch (IllegalArgumentException exception) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
 		}

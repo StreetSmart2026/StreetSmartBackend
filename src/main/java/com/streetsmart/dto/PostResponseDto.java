@@ -19,6 +19,7 @@ public class PostResponseDto {
 	private Instant statusTime;
 	private Integer count;
 	private Instant voteCountTime;
+	private Boolean likedByUser;
 	private PostAuthorDto user;
 
 	public Long getPostId() {
@@ -115,6 +116,14 @@ public class PostResponseDto {
 
 	public void setVoteCountTime(Instant voteCountTime) {
 		this.voteCountTime = voteCountTime;
+	}
+
+	public Boolean getLikedByUser() {
+		return likedByUser;
+	}
+
+	public void setLikedByUser(Boolean likedByUser) {
+		this.likedByUser = likedByUser;
 	}
 
 	public PostAuthorDto getUser() {

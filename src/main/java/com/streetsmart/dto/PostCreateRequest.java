@@ -14,7 +14,6 @@ public class PostCreateRequest {
 	private Instant postTime;
 	private String severity;
 	private String status;
-	private Integer count;
 	private Long userId;
 
 	public String getPostCaption() {
@@ -71,14 +70,6 @@ public class PostCreateRequest {
 
 	public void setStatus(String status) {
 		this.status = status;
-	}
-
-	public Integer getCount() {
-		return count;
-	}
-
-	public void setCount(Integer count) {
-		this.count = count;
 	}
 
 	public Long getUserId() {
