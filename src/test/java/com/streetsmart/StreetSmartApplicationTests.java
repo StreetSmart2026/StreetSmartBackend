@@ -9,6 +9,7 @@ import com.streetsmart.repository.PostSeverityRepository;
 import com.streetsmart.repository.PostStatusRepository;
 import com.streetsmart.repository.PostVoteCountRepository;
 import com.streetsmart.repository.UserRepository;
+import com.streetsmart.repository.UserVoteRepository;
 
 @SpringBootTest(properties = {
 		"spring.autoconfigure.exclude="
@@ -34,6 +35,9 @@ class StreetSmartApplicationTests {
 
 	@MockitoBean
 	private UserRepository userRepository;
+
+	@MockitoBean
+	private UserVoteRepository userVoteRepository;
 
 	@Test
 	void contextLoads() {

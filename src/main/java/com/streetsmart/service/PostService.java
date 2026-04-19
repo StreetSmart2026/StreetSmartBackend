@@ -30,24 +30,29 @@ import com.streetsmart.repository.PostSeverityRepository;
 import com.streetsmart.repository.PostStatusRepository;
 import com.streetsmart.repository.PostVoteCountRepository;
 import com.streetsmart.repository.UserRepository;
+import com.streetsmart.repository.UserVoteRepository;
 
 @Service
 public class PostService {
+
+	private static final int INITIAL_VOTE_COUNT = 0;
 
 	private final PostRepository postRepository;
 	private final UserRepository userRepository;
 	private final PostSeverityRepository postSeverityRepository;
 	private final PostStatusRepository postStatusRepository;
 	private final PostVoteCountRepository postVoteCountRepository;
+	private final UserVoteRepository userVoteRepository;
 
 	public PostService(PostRepository postRepository, UserRepository userRepository,
 			PostSeverityRepository postSeverityRepository, PostStatusRepository postStatusRepository,
-			PostVoteCountRepository postVoteCountRepository) {
+			PostVoteCountRepository postVoteCountRepository, UserVoteRepository userVoteRepository) {
 		this.postRepository = postRepository;
 		this.userRepository = userRepository;
 		this.postSeverityRepository = postSeverityRepository;
 		this.postStatusRepository = postStatusRepository;
 		this.postVoteCountRepository = postVoteCountRepository;
+		this.userVoteRepository = userVoteRepository;
 	}
 
 	@Transactional
@@ -67,7 +72,7 @@ public class PostService {
 
 		saveSeverityState(savedPost, request.getSeverity(), eventTime);
 		saveStatusState(savedPost, request.getStatus(), eventTime);
-		saveVoteCountState(savedPost, request.getCount(), eventTime);
+		saveVoteCountState(savedPost, INITIAL_VOTE_COUNT, eventTime);
 
 		try {
 			return toPostResponse(savedPost);
@@ -77,37 +82,57 @@ public class PostService {
 	}
 
 	public List<PostResponseDto> getAllPosts() {
+		return getAllPosts(null);
+	}
+
+	public List<PostResponseDto> getAllPosts(Long viewerUserId) {
 		return postRepository.findAll().stream()
-				.map(this::toPostResponse)
+				.map(post -> toPostResponse(post, viewerUserId))
 				.collect(Collectors.toList());
 	}
 
 	public PostResponseDto getPostById(Long postId) {
+		return getPostById(postId, null);
+	}
+
+	public PostResponseDto getPostById(Long postId, Long viewerUserId) {
 		return toPostResponse(postRepository.findById(postId)
-				.orElseThrow(() -> new IllegalArgumentException("Post not found.")));
+				.orElseThrow(() -> new IllegalArgumentException("Post not found.")), viewerUserId);
 	}
 
 	public List<PostResponseDto> getPostsByStatus(String status) {
+		return getPostsByStatus(status, null);
+	}
+
+	public List<PostResponseDto> getPostsByStatus(String status, Long viewerUserId) {
 		return postStatusRepository.findByIdStatus(requireValue(status, "Status is required.")).stream()
 				.map(PostStatus::getPost)
 				.collect(Collectors.toMap(Post::getPostId, post -> post, (left, right) -> left, LinkedHashMap::new))
 				.values()
 				.stream()
-				.map(this::toPostResponse)
+				.map(post -> toPostResponse(post, viewerUserId))
 				.collect(Collectors.toList());
 	}
 
 	public List<PostResponseDto> getPostsBySeverity(String severity) {
+		return getPostsBySeverity(severity, null);
+	}
+
+	public List<PostResponseDto> getPostsBySeverity(String severity, Long viewerUserId) {
 		return postSeverityRepository.findByIdSeverity(requireValue(severity, "Severity is required.")).stream()
 				.map(PostSeverity::getPost)
 				.collect(Collectors.toMap(Post::getPostId, post -> post, (left, right) -> left, LinkedHashMap::new))
 				.values()
 				.stream()
-				.map(this::toPostResponse)
+				.map(post -> toPostResponse(post, viewerUserId))
 				.collect(Collectors.toList());
 	}
 
 	public FeedResponseDto getFeed(Integer limit, Instant cursorPostTime, Long cursorPostId) {
+		return getFeed(limit, cursorPostTime, cursorPostId, null);
+	}
+
+	public FeedResponseDto getFeed(Integer limit, Instant cursorPostTime, Long cursorPostId, Long viewerUserId) {
 		int pageSize = requireFeedLimit(limit);
 		validateCursor(cursorPostTime, cursorPostId);
 
@@ -121,7 +146,7 @@ public class PostService {
 
 		FeedResponseDto response = new FeedResponseDto();
 		response.setItems(posts.stream()
-				.map(this::toPostResponse)
+				.map(post -> toPostResponse(post, viewerUserId))
 				.collect(Collectors.toList()));
 		response.setNextCursor(hasMore ? buildCursor(posts.get(posts.size() - 1)) : null);
 		return response;
@@ -139,7 +164,6 @@ public class PostService {
 		request.setPostLocation(requirePoint(request.getPostLocation()));
 		request.setPostImage(requireObject(request.getPostImage(), "Post image is required."));
 		request.setPostTime(requireObject(request.getPostTime(), "Post time is required."));
-		request.setCount(requireCount(request.getCount()));
 		requireUserId(request.getUserId());
 	}
 
@@ -240,6 +264,10 @@ public class PostService {
 	}
 
 	public PostResponseDto toPostResponse(Post post) {
+		return toPostResponse(post, null);
+	}
+
+	public PostResponseDto toPostResponse(Post post, Long viewerUserId) {
 		PostResponseDto response = new PostResponseDto();
 		response.setPostId(post.getPostId());
 		response.setPostCaption(post.getPostCaption());
@@ -250,6 +278,7 @@ public class PostService {
 		applyLatestSeverity(response, post.getPostId());
 		applyLatestStatus(response, post.getPostId());
 		applyLatestVoteCount(response, post.getPostId());
+		applyViewerVote(response, post.getPostId(), viewerUserId);
 		response.setUser(toPostAuthor(post.getUser()));
 		return response;
 	}
@@ -290,6 +319,18 @@ public class PostService {
 			response.setCount(voteCount.getId().getCount());
 			response.setVoteCountTime(voteCount.getId().getVoteCountTime());
 		});
+	}
+
+	private void applyViewerVote(PostResponseDto response, Long postId, Long viewerUserId) {
+		if (viewerUserId == null) {
+			return;
+		}
+
+		userVoteRepository.findTopByPostPostIdAndUserUserIdOrderByIdVoteTimeDesc(postId, viewerUserId)
+				.ifPresent(userVote -> response.setLikedByUser(Boolean.TRUE.equals(userVote.getId().getVoted())));
+		if (response.getLikedByUser() == null) {
+			response.setLikedByUser(false);
+		}
 	}
 
 	private PostSeverity buildSeverity(Post post, String severity, Instant severityTime) {
