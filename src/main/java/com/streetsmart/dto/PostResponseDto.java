@@ -1,7 +1,7 @@
 package com.streetsmart.dto;
 
 import java.time.Instant;
-import java.util.UUID;
+import java.util.List;
 
 import com.streetsmart.entity.PostPoint;
 
@@ -11,7 +11,7 @@ public class PostResponseDto {
 	private String postCaption;
 	private String postDescription;
 	private PostPoint postLocation;
-	private UUID postImage;
+	private List<PostImageResponseDto> postImages;
 	private Instant postTime;
 	private String severity;
 	private Instant severityTime;
@@ -53,12 +53,12 @@ public class PostResponseDto {
 		this.postLocation = postLocation;
 	}
 
-	public UUID getPostImage() {
-		return postImage;
+	public List<PostImageResponseDto> getPostImages() {
+		return postImages;
 	}
 
-	public void setPostImage(UUID postImage) {
-		this.postImage = postImage;
+	public void setPostImages(List<PostImageResponseDto> postImages) {
+		this.postImages = postImages;
 	}
 
 	public Instant getPostTime() {

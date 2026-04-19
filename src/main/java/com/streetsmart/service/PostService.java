@@ -1,8 +1,11 @@
 package com.streetsmart.service;
 
+import java.util.ArrayList;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -10,9 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.streetsmart.dto.PostAuthorDto;
 import com.streetsmart.dto.PostCreateRequest;
+import com.streetsmart.dto.PostImageRequest;
+import com.streetsmart.dto.PostImageResponseDto;
 import com.streetsmart.dto.PostResponseDto;
 import com.streetsmart.entity.AppUser;
 import com.streetsmart.entity.Post;
+import com.streetsmart.entity.PostImage;
 import com.streetsmart.entity.PostPoint;
 import com.streetsmart.entity.PostSeverity;
 import com.streetsmart.entity.PostSeverityId;
@@ -53,7 +59,7 @@ public class PostService {
 		post.setPostCaption(request.getPostCaption());
 		post.setPostDescription(request.getPostDescription());
 		post.setPostLocation(request.getPostLocation());
-		post.setPostImage(request.getPostImage());
+		post.setPostImages(buildPostImages(request.getPostImages()));
 		post.setPostTime(request.getPostTime());
 		post.setUser(resolveUser(request.getUserId()));
 
@@ -67,17 +73,20 @@ public class PostService {
 		return toPostResponse(savedPost);
 	}
 
+	@Transactional(readOnly = true)
 	public List<PostResponseDto> getAllPosts() {
 		return postRepository.findAll().stream()
 				.map(this::toPostResponse)
 				.collect(Collectors.toList());
 	}
 
+	@Transactional(readOnly = true)
 	public PostResponseDto getPostById(Long postId) {
 		return toPostResponse(postRepository.findById(postId)
 				.orElseThrow(() -> new IllegalArgumentException("Post not found.")));
 	}
 
+	@Transactional(readOnly = true)
 	public List<PostResponseDto> getPostsByStatus(String status) {
 		return postStatusRepository.findByIdStatus(requireValue(status, "Status is required.")).stream()
 				.map(PostStatus::getPost)
@@ -88,6 +97,7 @@ public class PostService {
 				.collect(Collectors.toList());
 	}
 
+	@Transactional(readOnly = true)
 	public List<PostResponseDto> getPostsBySeverity(String severity) {
 		return postSeverityRepository.findByIdSeverity(requireValue(severity, "Severity is required.")).stream()
 				.map(PostSeverity::getPost)
@@ -108,7 +118,7 @@ public class PostService {
 		request.setSeverity(requireValue(request.getSeverity(), "Severity is required."));
 		request.setStatus(requireValue(request.getStatus(), "Status is required."));
 		request.setPostLocation(requirePoint(request.getPostLocation()));
-		request.setPostImage(requireObject(request.getPostImage(), "Post image is required."));
+		request.setPostImages(requirePostImages(request.getPostImages()));
 		request.setPostTime(requireObject(request.getPostTime(), "Post time is required."));
 		request.setCount(requireCount(request.getCount()));
 		requireUserId(request.getUserId());
@@ -154,6 +164,66 @@ public class PostService {
 		return userId;
 	}
 
+	private List<PostImageRequest> requirePostImages(List<PostImageRequest> postImages) {
+		if (postImages == null || postImages.isEmpty()) {
+			throw new IllegalArgumentException("At least one post image is required.");
+		}
+
+		List<PostImageRequest> sanitizedImages = new ArrayList<>();
+		int primaryImageCount = 0;
+		Set<String> objectReferences = new HashSet<>();
+		Set<Integer> sortOrders = new HashSet<>();
+
+		for (int index = 0; index < postImages.size(); index++) {
+			PostImageRequest image = requireObject(postImages.get(index), "Post image is required.");
+			image.setBucketId(requireValue(image.getBucketId(), "Post image bucket is required."));
+			image.setObjectPath(requireValue(image.getObjectPath(), "Post image path is required."));
+			image.setSortOrder(requireSortOrder(image.getSortOrder(), index));
+			requireUniqueImageReference(objectReferences, image.getBucketId(), image.getObjectPath());
+			requireUniqueSortOrder(sortOrders, image.getSortOrder());
+			image.setPrimary(Boolean.TRUE.equals(image.getPrimary()));
+			if (Boolean.TRUE.equals(image.getPrimary())) {
+				primaryImageCount++;
+			}
+			sanitizedImages.add(image);
+		}
+
+		if (primaryImageCount > 1) {
+			throw new IllegalArgumentException("Only one post image can be marked as primary.");
+		}
+
+		if (primaryImageCount == 0) {
+			sanitizedImages.get(0).setPrimary(true);
+		}
+
+		return sanitizedImages;
+	}
+
+	private Integer requireSortOrder(Integer sortOrder, int defaultSortOrder) {
+		if (sortOrder == null) {
+			return defaultSortOrder;
+		}
+
+		if (sortOrder < 0) {
+			throw new IllegalArgumentException("Post image sort order cannot be negative.");
+		}
+
+		return sortOrder;
+	}
+
+	private void requireUniqueImageReference(Set<String> objectReferences, String bucketId, String objectPath) {
+		String imageReference = bucketId + "/" + objectPath;
+		if (!objectReferences.add(imageReference)) {
+			throw new IllegalArgumentException("Post images must use unique bucket and path values.");
+		}
+	}
+
+	private void requireUniqueSortOrder(Set<Integer> sortOrders, Integer sortOrder) {
+		if (!sortOrders.add(sortOrder)) {
+			throw new IllegalArgumentException("Post images must use unique sort orders.");
+		}
+	}
+
 	private AppUser resolveUser(Long userId) {
 		// Replace the incoming user stub with a managed entity so the foreign key always points to a real user.
 		return userRepository.findById(userId)
@@ -166,7 +236,9 @@ public class PostService {
 		response.setPostCaption(post.getPostCaption());
 		response.setPostDescription(post.getPostDescription());
 		response.setPostLocation(post.getPostLocation());
-		response.setPostImage(post.getPostImage());
+		response.setPostImages(post.getPostImages().stream()
+				.map(this::toPostImageResponse)
+				.collect(Collectors.toList()));
 		response.setPostTime(post.getPostTime());
 		applyLatestSeverity(response, post.getPostId());
 		applyLatestStatus(response, post.getPostId());
@@ -183,6 +255,32 @@ public class PostService {
 		author.setLastName(user.getLastName());
 		author.setAvatar(user.getAvatar());
 		return author;
+	}
+
+	private List<PostImage> buildPostImages(List<PostImageRequest> imageRequests) {
+		return imageRequests.stream()
+				.map(this::buildPostImage)
+				.collect(Collectors.toList());
+	}
+
+	private PostImage buildPostImage(PostImageRequest imageRequest) {
+		PostImage postImage = new PostImage();
+		postImage.setBucketId(imageRequest.getBucketId());
+		postImage.setObjectPath(imageRequest.getObjectPath());
+		postImage.setSortOrder(imageRequest.getSortOrder());
+		postImage.setPrimary(Boolean.TRUE.equals(imageRequest.getPrimary()));
+		return postImage;
+	}
+
+	private PostImageResponseDto toPostImageResponse(PostImage postImage) {
+		PostImageResponseDto response = new PostImageResponseDto();
+		response.setPostImageId(postImage.getPostImageId());
+		response.setBucketId(postImage.getBucketId());
+		response.setObjectPath(postImage.getObjectPath());
+		response.setSortOrder(postImage.getSortOrder());
+		response.setPrimary(postImage.isPrimary());
+		response.setCreatedAt(postImage.getCreatedAt());
+		return response;
 	}
 
 	private void applyLatestSeverity(PostResponseDto response, Long postId) {

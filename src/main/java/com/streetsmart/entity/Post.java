@@ -1,8 +1,10 @@
 package com.streetsmart.entity;
 
+import java.util.ArrayList;
 import java.time.Instant;
-import java.util.UUID;
+import java.util.List;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -12,6 +14,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
 @Entity
@@ -34,9 +38,6 @@ public class Post {
 	@Column(name = "post_location", nullable = false, columnDefinition = "point")
 	private PostPoint postLocation;
 
-	@Column(name = "post_image", nullable = false, unique = true)
-	private UUID postImage;
-
 	@Column(name = "post_time", nullable = false)
 	private Instant postTime;
 
@@ -44,6 +45,10 @@ public class Post {
 	@ManyToOne(fetch = FetchType.EAGER, optional = false)
 	@JoinColumn(name = "user_id", nullable = false)
 	private AppUser user;
+
+	@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+	@OrderBy("sortOrder ASC, createdAt ASC")
+	private List<PostImage> postImages = new ArrayList<>();
 
 	public Long getPostId() {
 		return postId;
@@ -77,14 +82,6 @@ public class Post {
 		this.postLocation = postLocation;
 	}
 
-	public UUID getPostImage() {
-		return postImage;
-	}
-
-	public void setPostImage(UUID postImage) {
-		this.postImage = postImage;
-	}
-
 	public Instant getPostTime() {
 		return postTime;
 	}
@@ -99,6 +96,30 @@ public class Post {
 
 	public void setUser(AppUser user) {
 		this.user = user;
+	}
+
+	public List<PostImage> getPostImages() {
+		return postImages;
+	}
+
+	public void setPostImages(List<PostImage> postImages) {
+		this.postImages.clear();
+		if (postImages == null) {
+			return;
+		}
+
+		for (PostImage postImage : postImages) {
+			addPostImage(postImage);
+		}
+	}
+
+	public void addPostImage(PostImage postImage) {
+		if (postImage == null) {
+			return;
+		}
+
+		postImage.setPost(this);
+		postImages.add(postImage);
 	}
 
 }
