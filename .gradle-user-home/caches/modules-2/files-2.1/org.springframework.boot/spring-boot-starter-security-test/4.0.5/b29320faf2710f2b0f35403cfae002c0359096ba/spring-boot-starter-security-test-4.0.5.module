@@ -1,0 +1,146 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.springframework.boot",
+    "module": "spring-boot-starter-security-test",
+    "version": "4.0.5",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.4.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter-security",
+          "version": {
+            "requires": "4.0.5"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter-test",
+          "version": {
+            "requires": "4.0.5"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-security-test",
+          "version": {
+            "requires": "4.0.5"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-starter-security-test-4.0.5.jar",
+          "url": "spring-boot-starter-security-test-4.0.5.jar",
+          "size": 4746,
+          "sha512": "495dba8588b49276b276ba55db593d9ae4ececc758577e2d710cffb6b6600a6a93e9d451db55ba80e1f297370c55346b0809a8850c25d117910f70f34d0264bf",
+          "sha256": "0b36f75c431cb531ac99640f994450ec6b7378c583f9f34289e68e3bd0a11bc1",
+          "sha1": "aa97375a4210883d5f5443fec93d86324d5b1936",
+          "md5": "713b7d2e12756c669aff4b6992183051"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter-security",
+          "version": {
+            "requires": "4.0.5"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter-test",
+          "version": {
+            "requires": "4.0.5"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-security-test",
+          "version": {
+            "requires": "4.0.5"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-starter-security-test-4.0.5.jar",
+          "url": "spring-boot-starter-security-test-4.0.5.jar",
+          "size": 4746,
+          "sha512": "495dba8588b49276b276ba55db593d9ae4ececc758577e2d710cffb6b6600a6a93e9d451db55ba80e1f297370c55346b0809a8850c25d117910f70f34d0264bf",
+          "sha256": "0b36f75c431cb531ac99640f994450ec6b7378c583f9f34289e68e3bd0a11bc1",
+          "sha1": "aa97375a4210883d5f5443fec93d86324d5b1936",
+          "md5": "713b7d2e12756c669aff4b6992183051"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-starter-security-test-4.0.5-javadoc.jar",
+          "url": "spring-boot-starter-security-test-4.0.5-javadoc.jar",
+          "size": 4746,
+          "sha512": "495dba8588b49276b276ba55db593d9ae4ececc758577e2d710cffb6b6600a6a93e9d451db55ba80e1f297370c55346b0809a8850c25d117910f70f34d0264bf",
+          "sha256": "0b36f75c431cb531ac99640f994450ec6b7378c583f9f34289e68e3bd0a11bc1",
+          "sha1": "aa97375a4210883d5f5443fec93d86324d5b1936",
+          "md5": "713b7d2e12756c669aff4b6992183051"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-starter-security-test-4.0.5-sources.jar",
+          "url": "spring-boot-starter-security-test-4.0.5-sources.jar",
+          "size": 4746,
+          "sha512": "495dba8588b49276b276ba55db593d9ae4ececc758577e2d710cffb6b6600a6a93e9d451db55ba80e1f297370c55346b0809a8850c25d117910f70f34d0264bf",
+          "sha256": "0b36f75c431cb531ac99640f994450ec6b7378c583f9f34289e68e3bd0a11bc1",
+          "sha1": "aa97375a4210883d5f5443fec93d86324d5b1936",
+          "md5": "713b7d2e12756c669aff4b6992183051"
+        }
+      ]
+    }
+  ]
+}
