@@ -3,6 +3,8 @@ package com.streetsmart.entity;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.ColumnTransformer;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -31,6 +33,7 @@ public class Post {
 
 	// Keep the database column as a native Postgres point while exposing a simple JSON object in the API.
 	@Convert(converter = PostPointConverter.class)
+	@ColumnTransformer(write = "?::point")
 	@Column(name = "post_location", nullable = false, columnDefinition = "point")
 	private PostPoint postLocation;
 

@@ -36,6 +36,8 @@ public class PostController {
 			return ResponseEntity.created(location).body(createdPost);
 		} catch (IllegalArgumentException exception) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
+		} catch (RuntimeException exception) {
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, rootMessage(exception), exception);
 		}
 	}
 
@@ -69,6 +71,20 @@ public class PostController {
 		} catch (IllegalArgumentException exception) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, exception.getMessage(), exception);
 		}
+	}
+
+	private String rootMessage(Throwable throwable) {
+		Throwable current = throwable;
+		while (current.getCause() != null && current.getCause() != current) {
+			current = current.getCause();
+		}
+
+		String message = current.getMessage();
+		if (message == null || message.isBlank()) {
+			return "Post creation failed.";
+		}
+
+		return message;
 	}
 
 }

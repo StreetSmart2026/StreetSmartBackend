@@ -1,13 +1,18 @@
 package com.streetsmart.service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.streetsmart.dto.FeedCursorDto;
+import com.streetsmart.dto.FeedResponseDto;
 import com.streetsmart.dto.PostAuthorDto;
 import com.streetsmart.dto.PostCreateRequest;
 import com.streetsmart.dto.PostResponseDto;
@@ -57,14 +62,18 @@ public class PostService {
 		post.setPostTime(request.getPostTime());
 		post.setUser(resolveUser(request.getUserId()));
 
-		Post savedPost = postRepository.save(post);
+		Post savedPost = saveCorePost(post);
 		Instant eventTime = request.getPostTime();
 
-		postSeverityRepository.save(buildSeverity(savedPost, request.getSeverity(), eventTime));
-		postStatusRepository.save(buildStatus(savedPost, request.getStatus(), eventTime));
-		postVoteCountRepository.save(buildVoteCount(savedPost, request.getCount(), eventTime));
+		saveSeverityState(savedPost, request.getSeverity(), eventTime);
+		saveStatusState(savedPost, request.getStatus(), eventTime);
+		saveVoteCountState(savedPost, request.getCount(), eventTime);
 
-		return toPostResponse(savedPost);
+		try {
+			return toPostResponse(savedPost);
+		} catch (RuntimeException exception) {
+			throw new IllegalStateException("Failed to load post after creation: " + rootMessage(exception), exception);
+		}
 	}
 
 	public List<PostResponseDto> getAllPosts() {
@@ -98,6 +107,26 @@ public class PostService {
 				.collect(Collectors.toList());
 	}
 
+	public FeedResponseDto getFeed(Integer limit, Instant cursorPostTime, Long cursorPostId) {
+		int pageSize = requireFeedLimit(limit);
+		validateCursor(cursorPostTime, cursorPostId);
+
+		Pageable pageRequest = PageRequest.of(0, pageSize + 1);
+		List<Post> queriedPosts = cursorPostTime == null
+				? postRepository.findAllByOrderByPostTimeDescPostIdDesc(pageRequest)
+				: postRepository.findFeedPageBeforeCursor(cursorPostTime, cursorPostId, pageRequest);
+
+		boolean hasMore = queriedPosts.size() > pageSize;
+		List<Post> posts = new ArrayList<>(queriedPosts.subList(0, Math.min(queriedPosts.size(), pageSize)));
+
+		FeedResponseDto response = new FeedResponseDto();
+		response.setItems(posts.stream()
+				.map(this::toPostResponse)
+				.collect(Collectors.toList()));
+		response.setNextCursor(hasMore ? buildCursor(posts.get(posts.size() - 1)) : null);
+		return response;
+	}
+
 	private void validateRequiredFields(PostCreateRequest request) {
 		if (request == null) {
 			throw new IllegalArgumentException("Post payload is required.");
@@ -112,6 +141,24 @@ public class PostService {
 		request.setPostTime(requireObject(request.getPostTime(), "Post time is required."));
 		request.setCount(requireCount(request.getCount()));
 		requireUserId(request.getUserId());
+	}
+
+	private int requireFeedLimit(Integer limit) {
+		if (limit == null) {
+			return 20;
+		}
+
+		if (limit < 1 || limit > 100) {
+			throw new IllegalArgumentException("Limit must be between 1 and 100.");
+		}
+
+		return limit;
+	}
+
+	private void validateCursor(Instant cursorPostTime, Long cursorPostId) {
+		if ((cursorPostTime == null) != (cursorPostId == null)) {
+			throw new IllegalArgumentException("Cursor post time and post id must be provided together.");
+		}
 	}
 
 	private String requireValue(String value, String message) {
@@ -154,6 +201,38 @@ public class PostService {
 		return userId;
 	}
 
+	private Post saveCorePost(Post post) {
+		try {
+			return postRepository.save(post);
+		} catch (RuntimeException exception) {
+			throw new IllegalStateException("Failed to save core post: " + rootMessage(exception), exception);
+		}
+	}
+
+	private void saveSeverityState(Post post, String severity, Instant eventTime) {
+		try {
+			postSeverityRepository.save(buildSeverity(post, severity, eventTime));
+		} catch (RuntimeException exception) {
+			throw new IllegalStateException("Failed to save post severity state: " + rootMessage(exception), exception);
+		}
+	}
+
+	private void saveStatusState(Post post, String status, Instant eventTime) {
+		try {
+			postStatusRepository.save(buildStatus(post, status, eventTime));
+		} catch (RuntimeException exception) {
+			throw new IllegalStateException("Failed to save post status state: " + rootMessage(exception), exception);
+		}
+	}
+
+	private void saveVoteCountState(Post post, Integer count, Instant eventTime) {
+		try {
+			postVoteCountRepository.save(buildVoteCount(post, count, eventTime));
+		} catch (RuntimeException exception) {
+			throw new IllegalStateException("Failed to save post vote count state: " + rootMessage(exception), exception);
+		}
+	}
+
 	private AppUser resolveUser(Long userId) {
 		// Replace the incoming user stub with a managed entity so the foreign key always points to a real user.
 		return userRepository.findById(userId)
@@ -173,6 +252,13 @@ public class PostService {
 		applyLatestVoteCount(response, post.getPostId());
 		response.setUser(toPostAuthor(post.getUser()));
 		return response;
+	}
+
+	private FeedCursorDto buildCursor(Post post) {
+		FeedCursorDto cursor = new FeedCursorDto();
+		cursor.setPostTime(post.getPostTime());
+		cursor.setPostId(post.getPostId());
+		return cursor;
 	}
 
 	private PostAuthorDto toPostAuthor(AppUser user) {
@@ -240,6 +326,20 @@ public class PostService {
 		postVoteCount.setId(id);
 		postVoteCount.setPost(post);
 		return postVoteCount;
+	}
+
+	private String rootMessage(Throwable throwable) {
+		Throwable current = throwable;
+		while (current.getCause() != null && current.getCause() != current) {
+			current = current.getCause();
+		}
+
+		String message = current.getMessage();
+		if (message == null || message.isBlank()) {
+			return throwable.getClass().getSimpleName();
+		}
+
+		return message;
 	}
 
 }
