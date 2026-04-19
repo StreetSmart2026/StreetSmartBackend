@@ -26,7 +26,7 @@ public class AppUser {
 	@Column(name = "email", nullable = false, unique = true, length = 255)
 	private String email;
 
-	@Column(name = "phone_number", nullable = false, length = 25)
+	@Column(name = "phone_number", nullable = false, unique = true, length = 25)
 	private String phoneNumber;
 
 	@Column(name = "first_name", nullable = false, length = 100)

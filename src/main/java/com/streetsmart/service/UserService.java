@@ -36,6 +36,10 @@ public class UserService {
 			throw new IllegalArgumentException("Email already exists.");
 		}
 
+		if (userRepository.existsByPhoneNumber(appUser.getPhoneNumber())) {
+			throw new IllegalArgumentException("Phone number already exists.");
+		}
+
 		return userRepository.save(appUser);
 	}
 
